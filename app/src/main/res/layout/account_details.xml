@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:background="#FFf0f0f0"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/account_name_label"
+        android:layout_margin="10dp"
+        android:text="Name: "
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/account_name"
+        android:layout_margin="10dp"
+        tools:text="Savings"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toEndOf="@id/account_name_label"
+        android:minWidth="100dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/account_number_label"
+        android:text="ACC #:"
+        app:layout_constraintStart_toEndOf="@+id/account_name"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_margin="10dp"
+        />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/account_number"
+        tools:text="879284765002"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toEndOf="@id/account_number_label"
+        android:layout_margin="10dp"
+        />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/account_balance_label"
+        android:text="Balance: $"
+        app:layout_constraintTop_toBottomOf="@+id/account_name"
+        android:layout_margin="10dp"
+        app:layout_constraintStart_toStartOf="parent"
+        />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/account_balance"
+        tools:text="45 089.90"
+        app:layout_constraintStart_toEndOf="@+id/account_balance_label"
+        app:layout_constraintTop_toBottomOf="@+id/account_name"
+        android:layout_marginTop="10dp"
+        android:layout_marginLeft="0dp"
+        />
+
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>
