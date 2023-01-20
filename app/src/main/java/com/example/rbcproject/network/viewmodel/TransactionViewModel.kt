@@ -3,14 +3,14 @@ package com.example.rbcproject.network.viewmodel
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.rbcproject.network.Repo
 import com.example.rbcproject.network.model.AccountData
 import com.example.rbcproject.network.model.TransactionViews
-import com.rbc.rbcaccountlibrary.Account
 import com.rbc.rbcaccountlibrary.AccountType
 import com.rbc.rbcaccountlibrary.Transaction
 import kotlinx.coroutines.*
+import java.text.SimpleDateFormat
+import java.util.*
 
 class TransactionViewModel :ViewModel() {
 
@@ -23,6 +23,9 @@ class TransactionViewModel :ViewModel() {
     val repo = Repo()
     val transactionLiveData = MutableLiveData<List<TransactionViews>>()
     val stateLiveData = MutableLiveData<State>()
+    val job = SupervisorJob()
+    val scope = CoroutineScope(Dispatchers.IO + job)
+
 
     private fun getCCTransactions(account: AccountData): List<Transaction>{
         return if (account.type == AccountType.CREDIT_CARD) repo.accountProvider.getAdditionalCreditCardTransactions(account.number) else listOf()
@@ -33,51 +36,68 @@ class TransactionViewModel :ViewModel() {
         return repo.accountProvider.getTransactions(accountNumber)
     }
 
-    fun getAccountTransactions(account: AccountData) {
-        stateLiveData.postValue(State.Loading())
-        val handler = CoroutineExceptionHandler { _, exception ->
-            stateLiveData.postValue(State.Error())
-        }
-        viewModelScope.launch { withContext(Dispatchers.IO) {
+    suspend fun getAccountTransactionsRepo(account: AccountData): List<TransactionViews.AccountTransactions> {
 
-            val generalTransactions = async(handler) { getAllTransactions(account.number).map { transaction: Transaction ->
-                TransactionViews.AccountTransactions(
-                    transaction.amount,
-                    transaction.date,
-                    transaction.description
-                )
-            }}
+        val generalTransactions = coroutineScope {
 
-
-            val creditCardTransactions = async(handler){getCCTransactions(account).map { transaction: Transaction ->
-                TransactionViews.AccountTransactions(
-                    transaction.amount,
-                    transaction.date,
-                    transaction.description
-                )
-            }}
-
-            val combinedData = mutableListOf<TransactionViews.AccountTransactions>()
-            try {
-                combinedData.addAll(generalTransactions.await())
-                combinedData.addAll(creditCardTransactions.await())
-                val mappedData = combinedData.groupBy {it.date }
-                val rtn = mutableListOf<TransactionViews>()
-                for (k in mappedData.keys.sortedByDescending{it}){
-                    rtn.add(TransactionViews.TransactionHeader(k))
-                    rtn.addAll(mappedData.get(k).orEmpty())
+            withContext(Dispatchers.IO) {
+                getAllTransactions(account.number).map { transaction: Transaction ->
+                    TransactionViews.AccountTransactions(
+                        transaction.amount,
+                        transaction.date,
+                        transaction.description
+                    )
                 }
-                transactionLiveData.postValue(rtn)
-                stateLiveData.postValue(State.Completed())
-        } catch (e: Exception){
-            Log.wtf("EXCEPTION CAUGHT", "Didn't fetch data" )
+            }
+        }
+
+        val creditCardTransactions = coroutineScope {
+            withContext(Dispatchers.IO) {
+                getCCTransactions(account).map { transaction: Transaction ->
+                    TransactionViews.AccountTransactions(
+                        transaction.amount,
+                        transaction.date,
+                        transaction.description
+                    )
+                }
+            }
+        }
+
+
+        val combinedData = mutableListOf<TransactionViews.AccountTransactions>()
+        combinedData.addAll(creditCardTransactions)
+        combinedData.addAll(generalTransactions)
+        if (combinedData.isNotEmpty()) {
+            val mappedData = combinedData.groupBy { it.date }
+            val rtn = mutableListOf<TransactionViews>()
+            val myFormat = "M-d-Y"
+            val dateFormat = SimpleDateFormat(myFormat, Locale.US)
+            for (k in mappedData.keys.sortedByDescending { it }) {
+                rtn.add(TransactionViews.TransactionHeader(dateFormat.format(k.time)))
+                rtn.addAll(mappedData.get(k).orEmpty())
+            }
+            transactionLiveData.postValue(rtn)
+            stateLiveData.postValue(State.Completed())
+        } else {
             stateLiveData.postValue(State.Error())
         }
 
-        }}
-
+        return combinedData
     }
 
+    fun getAccountTransactions(account: AccountData): List<TransactionViews.AccountTransactions> {
+        val data = mutableListOf<TransactionViews.AccountTransactions>()
+        stateLiveData.postValue(State.Loading())
+        scope.launch{
+            try {
+                 data.addAll(getAccountTransactionsRepo(account))
+            } catch (e: Exception){
+                Log.e("EXCEPTION **", "***** EXCEPTION ***** " +  e.message )
+                stateLiveData.postValue(State.Error())
+            }
+        }.start()
+        return data
+    }
 
 
 }
