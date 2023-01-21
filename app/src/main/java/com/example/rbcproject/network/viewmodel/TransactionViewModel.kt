@@ -10,6 +10,8 @@ import com.rbc.rbcaccountlibrary.AccountType
 import com.rbc.rbcaccountlibrary.Transaction
 import kotlinx.coroutines.*
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 class TransactionViewModel :ViewModel() {
@@ -37,6 +39,9 @@ class TransactionViewModel :ViewModel() {
     }
 
     suspend fun getAccountTransactionsRepo(account: AccountData): List<TransactionViews.AccountTransactions> {
+        val myFormat = "M-d-y"
+        val dateFormat = SimpleDateFormat(myFormat, Locale.US)
+        val newFormat = DateTimeFormatter.ofPattern(myFormat)
 
         val generalTransactions = coroutineScope {
 
@@ -44,7 +49,7 @@ class TransactionViewModel :ViewModel() {
                 getAllTransactions(account.number).map { transaction: Transaction ->
                     TransactionViews.AccountTransactions(
                         transaction.amount,
-                        transaction.date,
+                        LocalDate.parse(dateFormat.format(transaction.date.time), newFormat),
                         transaction.description
                     )
                 }
@@ -56,7 +61,7 @@ class TransactionViewModel :ViewModel() {
                 getCCTransactions(account).map { transaction: Transaction ->
                     TransactionViews.AccountTransactions(
                         transaction.amount,
-                        transaction.date,
+                        LocalDate.parse(dateFormat.format(transaction.date.time), newFormat),
                         transaction.description
                     )
                 }
@@ -70,10 +75,8 @@ class TransactionViewModel :ViewModel() {
         if (combinedData.isNotEmpty()) {
             val mappedData = combinedData.groupBy { it.date }
             val rtn = mutableListOf<TransactionViews>()
-            val myFormat = "M-d-Y"
-            val dateFormat = SimpleDateFormat(myFormat, Locale.US)
             for (k in mappedData.keys.sortedByDescending { it }) {
-                rtn.add(TransactionViews.TransactionHeader(dateFormat.format(k.time)))
+                rtn.add(TransactionViews.TransactionHeader(k))
                 rtn.addAll(mappedData.get(k).orEmpty())
             }
             transactionLiveData.postValue(rtn)
